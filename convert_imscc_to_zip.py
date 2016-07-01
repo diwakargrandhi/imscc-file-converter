@@ -1,22 +1,24 @@
-# diwakargrandhi
-# works with python 3
+'''
+author - diwakargrandhi
+version - python3
+documentation links -
+# minidom parsing
+## http://www.mkyong.com/python/python-read-xml-file-dom-example/
+## http://muktvijay.blogspot.in/2013/04/how-to-parse-xml-in-python-using-minidom.html
+# dom official documentation - https://docs.python.org/2/library/xml.dom.html#module-xml.dom
+key decisions - 
+# we went with dom to parse the xml instead of element tree because of the complications with namespaces
+'''
 
 import logging
 import os
 import shutil
 import zipfile
-import xml.etree.ElementTree as ET
-
-# Better to use the c version since it is much faster and consumes significantly less memory
-'''
-try:
-    import xml.etree.cElementTree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
-'''
+from xml.dom import minidom
+from xml.parsers.expat import ExpatError
 
 # user inputs
-imscc_file_path = "/Users/rdiwakar/SLP/exports/Home-SLP-2016-LEAD-Section-1.imscc"
+imscc_file_path = ""
 
 # global defaults
 temp_folder_name = "temp"
@@ -24,23 +26,54 @@ imsmanifest_file_name = "imsmanifest.xml"
 file_extension_zip = "zip"
 structured_suffix = "-structured"
 
-logging.basicConfig(filename='convert_imscc.log', 
+logging.basicConfig(filename='logs/convert_imscc.log', 
 					filemode='w', 
 					level=logging.DEBUG,
 					format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
 
 def create_directory(directory_path):
 	if not os.path.exists(directory_path):
-	    os.makedirs(directory_path)
-	    logging.debug("Created the {0} folder.".format(directory_path))
+		logging.debug("Created the {0} folder.".format(directory_path))
+		os.makedirs(directory_path)
 
-def copy_file(src_file_path, dst_folder_path):
+# If the destination is an existing directory, then src is moved inside that directory
+# If the destination already exists but is not a directory, it may be overwritten 
+def move_directory(src_path, dst_path):
+	if os.path.exists(dst_path) and os.path.isdir(dst_path):
+		logging.debug("Moving directory from {0} to {1}".format(src_path, dst_path))
+		shutil.move(src_path, dst_path)
+
+def delete_directory(directory_path):
+	if os.path.exists(directory_path):
+		logging.debug("Deleting directory {0}".format(directory_path))
+		shutil.rmtree(directory_path)
+
+def rename_directory(directory_path, new_dir_name):
+	logging.debug("rename_directory API, directory_path: {0}".format(directory_path))
+	logging.debug("rename_directory API, new_dir_name: {0}".format(new_dir_name))
+	if os.path.exists(directory_path):
+		path, filename = os.path.split(directory_path)
+		new_path = os.path.join(path, new_dir_name)
+		logging.debug("Renaming directory from {0} to {1}".format(directory_path, new_path))
+		os.rename(directory_path, new_path)
+
+def copy_file(src_file_path, dst_folder_path, dst_file_name):
 	create_directory(dst_folder_path)
+	
 	src_file_name = os.path.basename(src_file_path)
-	dst_file_path = os.path.join(dst_folder_path, src_file_name)
+	logging.debug("src_file_name is {0}".format(src_file_name))
+	
+	# Using the destination file name if it is provided explicitly
+	if dst_file_name != None and dst_file_name.strip() != "":
+		dst_file_path = os.path.join(dst_folder_path, dst_file_name)
+	else:
+		dst_file_path = os.path.join(dst_folder_path, src_file_name)
+
 	if os.path.isfile(src_file_path):
 		shutil.copyfile(src_file_path, dst_file_path)
 		logging.debug("Copied the {0} file to {1} location.".format(src_file_path, dst_file_path))
+	else:
+		logging.debug("Did not find any file at {0}".format(src_file_path))
 	return dst_file_path
 
 def get_file_name_without_ext(file_path):
@@ -74,45 +107,117 @@ def unzip(src_file_path):
 	return dst_dir_path
 
 def get_xml_data(file_path):
-	file_obj = open(file_path)
-	file_content = ""
-	for line in file_obj:
-		file_content = file_content + line
-	logging.debug("File contents of {0}, are {1}.".format(file_path, file_content))
-	
-	# xml_data = ET.parse(file_path)
-	xml_data = file_content
-	logging.debug("Parsed xml data of {0}, are {1}.".format(file_path, xml_data))
+	xml_data = ""
+	try:
+		xml_data = minidom.parse(file_path)
+	except ExpatError as e:
+		logging.error("Error while reading xml from {0}.".format(file_path), exc_info=True)
 	
 	return xml_data
 
-def process_file(file_name, src_dir_path, dst_dir_path):
+def process_file(file_name, src_dir_path, dst_dir_path, dst_file_name):
 	src_file_path = os.path.join(src_dir_path, file_name)
-	copy_file(src_file_path, dst_dir_path)
+	copy_file(src_file_path, dst_dir_path, dst_file_name)
 
-def process_folder(xml_element, src_dir_path, dst_dir_path):
-	src_folder_identifier = xml_element.get('identifierref')
+def does_any_attribute_match_given_list_of_names(xml_element, attr_name_list):
+	is_attr_name_matching_given_name = False
+	if xml_element.hasAttributes():
+		for attr_name in attr_name_list:
+			if xml_element.hasAttribute(attr_name):
+				is_attr_name_matching_given_name = True
+				break
+	return is_attr_name_matching_given_name
+
+def does_any_child_nodes_match_given_node_name(xml_element, node_name):
+	is_child_node_matching_given_name = False
+	if xml_element.hasChildNodes():
+		for child_element in xml_element.childNodes:
+			child_node_name = child_element.nodeName
+			if child_node_name != None and child_node_name == node_name:
+				is_child_node_matching_given_name = True
+				break
+	logging.debug("is_child_node_matching_given_name being returned is {0}".format(str(is_child_node_matching_given_name)))
+	return is_child_node_matching_given_name
+
+def process_node(xml_element, resources_data, src_dir_path, dst_dir_path):
+	logging.debug("XML element obtained is: {0}".format(xml_element.toprettyxml(indent = '  ').encode('utf-8').strip()))
+
+	src_folder_identifier = xml_element.getAttribute('identifierref')
+	logging.debug("src_folder_identifier obtained is: {0}".format(src_folder_identifier))
 	new_src_dir_path = os.path.join(src_dir_path, src_folder_identifier)
 	
-	title = xml_element.find('title').text
-	new_dst_dir_path = os.path.join(dst_dir_path, title)
-	
-	if len(xml_element.findall('item')) == 0:
-		process_file(title, new_src_dir_path, dst_dir_path)
-	else:
+	# We need to get the title which is an immediate childNode
+	logging.debug("title node obtained is: {0}".format(xml_element.getElementsByTagName('title')[0].toprettyxml(indent = '  ')))
+	title = xml_element.getElementsByTagName('title')[0].firstChild.nodeValue
+
+	if does_any_child_nodes_match_given_node_name(xml_element, 'item'):
+		# If there are further children in the xml tag with item as tag name, it means that this is a folder
+		
+		new_dst_dir_path = os.path.join(dst_dir_path, title)
+
+		logging.info("Processing folder: {0}".format(title))
+		logging.info("Source Path: {0}".format(new_src_dir_path))
+		logging.info("Destination Path: {0}".format(new_dst_dir_path))
 		create_directory(new_dst_dir_path)
-		process_folder(new_dst_dir_path)
+		for each_item in xml_element.childNodes:
+			if each_item.nodeName == 'item':
+				process_node(each_item, resources_data, new_src_dir_path, new_dst_dir_path)
+	else:
+		resources_list = filter(lambda x: x.get('identifier') == src_folder_identifier, resources_data)
+		if len(resources_list) > 0:
+			file_name = resources_list[0].get('filename')
+			file_name_without_ext = get_file_name_without_ext(file_name)
+			ext = os.path.splitext(file_name)[1]
+			
+			dst_file_name = file_name
+			if file_name_without_ext == src_folder_identifier:
+				# In this case, instead of using the identifier, let's use the more meaningful title
+				dst_file_name = title + ext
+			
+			logging.info("Processing file: {0}".format(file_name))
+			logging.info("Source Path: {0}".format(new_src_dir_path))
+			logging.info("Destination Path: {0}".format(dst_dir_path))
+			logging.info("Destination File Name: {0}".format(dst_file_name))
+			process_file(file_name, new_src_dir_path, dst_dir_path, dst_file_name)
+		else:
+			logging.error("Error in processing file: {0}".format(title))
+
+def get_list_of_dicts_for_resources_info(resources_root_element):
+	logging.info("Started building the resources information.")
+	list_of_dicts_for_resources_info = []
+	for each_resource in resources_root_element.getElementsByTagName('resource'):
+		identifier = each_resource.getAttribute('identifier')
+		href_info = each_resource.getElementsByTagName('file')[0].getAttribute('href')
+		file_name = href_info.split('/')[-1]
+		
+		dicts_for_resources_info = {}
+		dicts_for_resources_info['identifier'] = identifier
+		dicts_for_resources_info['filename'] = file_name
+
+		list_of_dicts_for_resources_info.append(dicts_for_resources_info)
+		logging.debug("\nidentifier: {0}\nfilename: {1}".format(identifier, file_name))
+	logging.info("Completed building the resources information.")
+	return list_of_dicts_for_resources_info
 
 def process_xml_data(xml_data, src_dir_path, dst_dir_path):
-	# data_root = xml_data.getroot()
-	data_root = ET.fromString(xml_data)
-	logging.debug("root: " + data_root.text)
-	organization_root = data_root.find('organizations')
-	logging.debug("organization_root: " + str(organization_root))
-	item_root = organization_root.findall(".//*[@identifier='root']")
-	logging.debug("item_root: " + str(item_root))
-	for each_item in item_root.findall('item'):
-		process_folder(each_item, src_dir_path, dst_dir_path)
+	organizations_root = xml_data.getElementsByTagName('organizations')[0]
+	# This is useful to get the metadata of files. resources_data = [{"identifier":"abc","filename":"123"},{"identifier":"def","filename":"456"}]
+	resources_root = xml_data.getElementsByTagName('resources')[0]
+	resources_data = get_list_of_dicts_for_resources_info(resources_root)
+
+	# Assuming that we have only a single organization in the xml
+	# Easily extensible for multiple organizations by adding a for loop
+	organization_element = organizations_root.getElementsByTagName('organization')[0]
+	logging.debug("Obtained organization_element: " + str(organization_element))
+
+	# the only node inside organization element will be the item node with attribute identifier set to root
+	item_root = organization_element.childNodes[0]
+
+	if(item_root.hasChildNodes()):
+		has_atleast_one_item_node = does_any_child_nodes_match_given_node_name(item_root, 'item')
+		if has_atleast_one_item_node:
+			for child_item_node in item_root.childNodes:
+				process_node(child_item_node, resources_data, src_dir_path, dst_dir_path)
 
 # Main Program Logic
 if __name__ == '__main__':
@@ -123,12 +228,21 @@ if __name__ == '__main__':
 	# Extract the zip folder
 	# Create a tmp folder to store the structured data
 	# Parse the imsmanifest file
+	# Organize the content in the tmp folder
+	# move the folder to the same location as the imscc file
+	# rename the moved file
+	# delete the tmp folder
+
+	logging.info("Starting convert_imscc_to_zip script.")
+
+	folder_of_imscc_path, imscc_file_name = os.path.split(imscc_file_path)
+	imscc_file_name_without_ext = os.path.splitext(imscc_file_name)[0]
 
 	dir_path = os.path.dirname(os.path.abspath(__file__))
 	temp_dir_path = os.path.join(dir_path, temp_folder_name)
 	create_directory(temp_dir_path)
 
-	imscc_file_in_tmp_path = copy_file(imscc_file_path, temp_dir_path)
+	imscc_file_in_tmp_path = copy_file(imscc_file_path, temp_dir_path, None)
 
 	imscc_file_path_with_zip_ext = rename_file_change_extension(imscc_file_in_tmp_path, file_extension_zip)
 
@@ -142,6 +256,11 @@ if __name__ == '__main__':
 	xml_data = get_xml_data(imsmanifest_file_path)
 	
 	process_xml_data(xml_data, imscc_zip_file_extracted_path, tmp_folder_for_structured_data_path)
-	
 
-		
+	move_directory(tmp_folder_for_structured_data_path, folder_of_imscc_path)
+
+	rename_directory(os.path.join(folder_of_imscc_path, imscc_file_name_without_ext + structured_suffix), imscc_file_name_without_ext)
+
+	delete_directory(temp_dir_path)
+
+	logging.info("Ending convert_imscc_to_zip script.")
