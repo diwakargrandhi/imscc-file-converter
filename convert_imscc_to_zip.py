@@ -232,6 +232,8 @@ if __name__ == '__main__':
 	group.add_argument('-l', '--list', nargs='*', help='Please provide the paths to a list of imscc files.')
 	group.add_argument('-d', '--dir', nargs=1, help='Please provide the path to the directory containing imscc file(s).')
 
+	parser.add_argument('-ll', '--loglevel', nargs=1, choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], help='Please provide the appropriate level to change the detail of logs.')
+
 	args = parser.parse_args()
 
 	list_of_imscc_files = []
@@ -242,12 +244,16 @@ if __name__ == '__main__':
 		list_of_imscc_files.extend(args.list)
 	elif(args.dir):
 		path_folder = ''.join(args.dir)
-		logger.debug("Obtained args.dir: {0}".format(path_folder))
+		logger.info("Obtained args.dir: {0}".format(path_folder))
 		for file in os.listdir(path_folder):
 			if file.endswith('.imscc'):
 				list_of_imscc_files.append(os.path.join(path_folder, file))
-		
-	logger.debug("Obtained imscc files in the folder: {0}".format(str(list_of_imscc_files)))
+	
+	if(args.loglevel):
+		level = logging.getLevelName(''.join(args.loglevel))
+		logger.setLevel(level)
+
+	logger.info("Obtained the following list of files: {0}".format(''.join(list_of_imscc_files)))
 
 	dir_path = os.path.dirname(os.path.abspath(__file__))
 	temp_dir_path = os.path.join(dir_path, temp_folder_name)
