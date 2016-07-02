@@ -13,8 +13,9 @@ Python version - python 2
 ## Code Example
 
 Using the script to convert a single imscc file.
-* python convert_imscc_file.py -f <path_to_file>
-* python convert_imscc_file.py --file <path_to_file>
+* python convert_imscc_file.py -f "path_to_file"
+* python convert_imscc_file.py --file "path_to_file"
+
 Example:
 ```shell
 * python convert_imscc_file.py -f "Users/diwakar/file1.imscc"
@@ -22,8 +23,9 @@ Example:
 ```
 
 Using the script to convert a list of imscc files.
-* python convert_imscc_file.py -l <path_to_file> <path_to_file>
-* python convert_imscc_file.py --list <path_to_file> <path_to_file>
+* python convert_imscc_file.py -l "path_to_file" "path_to_file"
+* python convert_imscc_file.py --list "path_to_file" "path_to_file"
+
 Example:
 ```shell
 * python convert_imscc_file.py -l "Users/diwakar/file1.imscc" "Users/diwakar/file2.imscc"
@@ -31,8 +33,9 @@ Example:
 ```
 
 Using the script to convert a list of imscc files which are present in one folder. This will consider imscc files which are present the immediate folder only.
-* python convert_imscc_file.py -d <path_to_directory>
-* python convert_imscc_file.py --dir <path_to_directory>
+* python convert_imscc_file.py -d "path_to_directory"
+* python convert_imscc_file.py --dir "path_to_directory"
+
 Example:
 ```shell
 * python convert_imscc_file.py -d "Users/diwakar"
@@ -42,8 +45,9 @@ Example:
 **Note** Either one of the above three arguments are required for the script to function.
 
 Using the script to change the log level. The default value is INFO whereas changing it to DEBUG will help gather more information. The values which are accepted by this parameter are DEBUG/INFO/WARNING/ERROR/CRITICAL.
-* python convert_imscc_file.py -f <path_to_file> -ll DEBUG
-* python convert_imscc_file.py --file <path_to_file> --loglevel DEBUG
+* python convert_imscc_file.py -f "path_to_file" -ll DEBUG
+* python convert_imscc_file.py --file "path_to_file" --loglevel DEBUG
+
 Example:
 ```shell
 * python convert_imscc_file.py -f "Users/diwakar/file1.imscc" -ll DEBUG
@@ -52,8 +56,9 @@ Example:
 **Note** The default value for this variable is INFO.
 
 Using the script to change the final result. It can be a folder or a zip file. The resultant folder/file will be present in the same place as the source file. The values which are accepted by this parameter are zip/folder.
-* python convert_imscc_file.py -f <path_to_file> -r zip
-* python convert_imscc_file.py --file <path_to_file> --result zip
+* python convert_imscc_file.py -f "path_to_file" -r zip
+* python convert_imscc_file.py --file "path_to_file" --result zip
+
 Example:
 ```shell
 * python convert_imscc_file.py -f "Users/diwakar/file1.imscc" -r zip
