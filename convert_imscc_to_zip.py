@@ -25,10 +25,12 @@ temp_folder_name = "temp"
 imsmanifest_file_name = "imsmanifest.xml"
 file_extension_zip = "zip"
 structured_suffix = "-structured"
+RESULT_TYPE_FOLDER = "folder"
+RESULT_TYPE_ZIP = "zip"
 
 logging.basicConfig(filename='logs/convert_imscc.log', 
 					filemode='w', 
-					level=logging.DEBUG,
+					level=logging.INFO,
 					format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
 logger = logging.getLogger()
 
@@ -99,7 +101,17 @@ def rename_file_change_extension(file_path, new_extension):
 		logger.debug("Given file {0} doesnt exist.".format(file_path))
 	return new_file_path
 
-def unzip(src_file_path):
+def zip_directory(src_file_path):
+	zip_file_path = src_file_path + "." + file_extension_zip
+	zip_file_name = zip_file_path.split(os.pathsep)[-1]
+	rootlen = len(src_file_path) + 1
+	zipf = zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED)
+	for base, dirs, files in os.walk(src_file_path):
+		for entity in dirs + files:
+			entity_path = os.path.join(base, entity)
+			zipf.write(entity_path, entity_path[rootlen:])
+
+def unzip_directory(src_file_path):
 	file_name_without_extension = get_file_name_without_ext(src_file_path)
 	src_dir_path = os.path.dirname(src_file_path)
 	dst_dir_path = os.path.join(src_dir_path, file_name_without_extension)
@@ -157,8 +169,8 @@ def process_node(xml_element, resources_data, src_dir_path, dst_dir_path):
 		new_dst_dir_path = os.path.join(dst_dir_path, title)
 
 		logger.info("Processing folder: {0}".format(title))
-		logger.info("Source Path: {0}".format(new_src_dir_path))
-		logger.info("Destination Path: {0}".format(new_dst_dir_path))
+		logger.debug("Source Path: {0}".format(new_src_dir_path))
+		logger.debug("Destination Path: {0}".format(new_dst_dir_path))
 		create_directory(new_dst_dir_path)
 		for each_item in xml_element.childNodes:
 			if each_item.nodeName == 'item':
@@ -176,9 +188,9 @@ def process_node(xml_element, resources_data, src_dir_path, dst_dir_path):
 				dst_file_name = title + ext
 			
 			logger.info("Processing file: {0}".format(file_name))
-			logger.info("Source Path: {0}".format(new_src_dir_path))
-			logger.info("Destination Path: {0}".format(dst_dir_path))
-			logger.info("Destination File Name: {0}".format(dst_file_name))
+			logger.debug("Source Path: {0}".format(new_src_dir_path))
+			logger.debug("Destination Path: {0}".format(dst_dir_path))
+			logger.debug("Destination File Name: {0}".format(dst_file_name))
 			process_file(file_name, new_src_dir_path, dst_dir_path, dst_file_name)
 		else:
 			logger.error("Error in processing file: {0}".format(title))
@@ -232,7 +244,8 @@ if __name__ == '__main__':
 	group.add_argument('-l', '--list', nargs='*', help='Please provide the paths to a list of imscc files.')
 	group.add_argument('-d', '--dir', nargs=1, help='Please provide the path to the directory containing imscc file(s).')
 
-	parser.add_argument('-ll', '--loglevel', nargs=1, choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], help='Please provide the appropriate level to change the detail of logs.')
+	parser.add_argument('-ll', '--loglevel', nargs=1, choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], help='Please provide the appropriate level to change the detail of logs. It can take one of the following values, DEBUG, INFO, WARNING, ERROR, CRITICAL as argument.')
+	parser.add_argument('-r', '--result', nargs=1, choices=[RESULT_TYPE_FOLDER, RESULT_TYPE_ZIP], default=RESULT_TYPE_FOLDER, help='Please provide the way in which final result has to be. It can take one of the following values, ' + RESULT_TYPE_FOLDER + ', ' + RESULT_TYPE_ZIP + ' as argument.')
 
 	args = parser.parse_args()
 
@@ -250,8 +263,15 @@ if __name__ == '__main__':
 				list_of_imscc_files.append(os.path.join(path_folder, file))
 	
 	if(args.loglevel):
-		level = logging.getLevelName(''.join(args.loglevel))
+		provided_log_level = ''.join(args.loglevel)
+		level = logging.getLevelName(provided_log_level)
 		logger.setLevel(level)
+		logger.info("Setting the log level to {0}.".format(provided_log_level))
+
+	result_type = ""
+	if(args.result):
+		result_type = ''.join(args.result)
+		logger.info("Provided result type is {0}.".format(result_type))
 
 	logger.info("Obtained the following list of files: {0}".format(''.join(list_of_imscc_files)))
 
@@ -272,31 +292,39 @@ if __name__ == '__main__':
 		# rename the moved file
 		# delete the tmp folder
 
-		logger.info("Working on file: {0}".format(each_imscc_file))
+		try:
+			logger.info("Working with file: {0}".format(each_imscc_file))
 
-		imscc_file_path = each_imscc_file	
+			imscc_file_path = each_imscc_file	
 
-		folder_of_imscc_path, imscc_file_name = os.path.split(imscc_file_path)
-		imscc_file_name_without_ext = os.path.splitext(imscc_file_name)[0]
+			folder_of_imscc_path, imscc_file_name = os.path.split(imscc_file_path)
+			imscc_file_name_without_ext = os.path.splitext(imscc_file_name)[0]
 
-		imscc_file_in_tmp_path = copy_file(imscc_file_path, temp_dir_path, None)
+			imscc_file_in_tmp_path = copy_file(imscc_file_path, temp_dir_path, None)
 
-		imscc_file_path_with_zip_ext = rename_file_change_extension(imscc_file_in_tmp_path, file_extension_zip)
+			imscc_file_path_with_zip_ext = rename_file_change_extension(imscc_file_in_tmp_path, file_extension_zip)
 
-		imscc_zip_file_extracted_path = unzip(imscc_file_path_with_zip_ext)
+			imscc_zip_file_extracted_path = unzip_directory(imscc_file_path_with_zip_ext)
 
-		tmp_folder_for_structured_data_path = imscc_zip_file_extracted_path + structured_suffix
-		create_directory(tmp_folder_for_structured_data_path)
+			tmp_folder_for_structured_data_path = imscc_zip_file_extracted_path + structured_suffix
+			create_directory(tmp_folder_for_structured_data_path)
 
-		imsmanifest_file_path = os.path.join(imscc_zip_file_extracted_path, imsmanifest_file_name)
+			imsmanifest_file_path = os.path.join(imscc_zip_file_extracted_path, imsmanifest_file_name)
 
-		xml_data = get_xml_data(imsmanifest_file_path)
-		
-		process_xml_data(xml_data, imscc_zip_file_extracted_path, tmp_folder_for_structured_data_path)
+			xml_data = get_xml_data(imsmanifest_file_path)
+			
+			process_xml_data(xml_data, imscc_zip_file_extracted_path, tmp_folder_for_structured_data_path)
 
-		move_directory(tmp_folder_for_structured_data_path, folder_of_imscc_path)
+			move_directory(tmp_folder_for_structured_data_path, folder_of_imscc_path)
 
-		rename_directory(os.path.join(folder_of_imscc_path, imscc_file_name_without_ext + structured_suffix), imscc_file_name_without_ext)
+			rename_directory(os.path.join(folder_of_imscc_path, imscc_file_name_without_ext + structured_suffix), imscc_file_name_without_ext)
+
+			if(result_type == RESULT_TYPE_ZIP):
+				zip_directory(os.path.join(folder_of_imscc_path, imscc_file_name_without_ext))
+				delete_directory(os.path.join(folder_of_imscc_path, imscc_file_name_without_ext))
+
+		except Exception as e:
+			logger.exception("Error converting imscc file: {0}".format(each_imscc_file))
 
 	delete_directory(temp_dir_path)
 
