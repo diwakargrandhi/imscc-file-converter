@@ -16,7 +16,7 @@ Using the script to convert a single imscc file.
 * python convert_imscc_file.py -f <path_to_file>
 * python convert_imscc_file.py --file <path_to_file>
 Example:
-```python
+```shell
 * python convert_imscc_file.py -f "Users/diwakar/file1.imscc"
 * python convert_imscc_file.py --file "Users/diwakar/file1.imscc"
 ```
@@ -25,7 +25,7 @@ Using the script to convert a list of imscc files.
 * python convert_imscc_file.py -l <path_to_file> <path_to_file>
 * python convert_imscc_file.py --list <path_to_file> <path_to_file>
 Example:
-```python
+```shell
 * python convert_imscc_file.py -l "Users/diwakar/file1.imscc" "Users/diwakar/file2.imscc"
 * python convert_imscc_file.py --list "Users/diwakar/file1.imscc" "Users/diwakar/file2.imscc"
 ```
@@ -34,7 +34,7 @@ Using the script to convert a list of imscc files which are present in one folde
 * python convert_imscc_file.py -d <path_to_directory>
 * python convert_imscc_file.py --dir <path_to_directory>
 Example:
-```python
+```shell
 * python convert_imscc_file.py -d "Users/diwakar"
 * python convert_imscc_file.py --dir "Users/diwakar"
 ```
@@ -45,7 +45,7 @@ Using the script to change the log level. The default value is INFO whereas chan
 * python convert_imscc_file.py -f <path_to_file> -ll DEBUG
 * python convert_imscc_file.py --file <path_to_file> --loglevel DEBUG
 Example:
-```python
+```shell
 * python convert_imscc_file.py -f "Users/diwakar/file1.imscc" -ll DEBUG
 * python convert_imscc_file.py --file "Users/diwakar/file1.imscc" --loglevel DEBUG
 ```
@@ -55,7 +55,7 @@ Using the script to change the final result. It can be a folder or a zip file. T
 * python convert_imscc_file.py -f <path_to_file> -r zip
 * python convert_imscc_file.py --file <path_to_file> --result zip
 Example:
-```python
+```shell
 * python convert_imscc_file.py -f "Users/diwakar/file1.imscc" -r zip
 * python convert_imscc_file.py --file "Users/diwakar/file1.imscc" --result zip
 ```
